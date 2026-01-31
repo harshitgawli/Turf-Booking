@@ -2,6 +2,42 @@ const User = require("../Models/User.js");
 const generateOtp = require("../Utils/generateOtp.js");
 const transporter = require("../Config/mailer.js");
 
+// SEND OTP FOR REGISTRATION
+exports.registerSendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "Email already registered" });
+    }
+
+    const otp = generateOtp();
+
+    const user = await User.create({
+      email,
+      otp,
+      otpExpiry: Date.now() + 5 * 60 * 1000
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL,
+      to: email,
+      subject: "OTP for Registration",
+      text: `Your OTP is ${otp}`
+    });
+
+    res.json({ message: "OTP sent for registration" });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 // SEND OTP
 exports.sendOtp = async (req, res) => {
   try {
@@ -72,6 +108,7 @@ exports.verifyOtp = async (req, res) => {
 };
 
 
+const jwt = require("jsonwebtoken");
 // LOGIN
 exports.login = async (req, res) => {
   try {
@@ -91,7 +128,14 @@ exports.login = async (req, res) => {
     if (!match)
       return res.status(400).json({ message: "Wrong password" });
 
-    res.json({ message: "Login successful", userId: user._id });
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ message: "Login successful", userId: user._id,token: token
+     });
 
   } catch (err) {
     res.status(500).json({ message: "Server error" });
