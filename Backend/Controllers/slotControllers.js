@@ -141,3 +141,102 @@ exports.getAllBookings = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+const razorpay = require("../Config/razorpay.js");
+
+// CREATE PAYMENT ORDER
+exports.createOrder = async (req, res) => {
+  try {
+    const slot = await Slot.findById(req.params.id);
+
+    if (!slot || slot.status !== "available") {
+      return res.status(400).json({ message: "Slot not available" });
+    }
+
+    const order = await razorpay.orders.create({
+      amount: 500,
+      currency: "INR",
+      receipt: `slot_${slot._id}`
+    });
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Payment order failed" });
+  }
+};
+
+
+
+const crypto = require("crypto");
+
+exports.verifyPayment = async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      slotId
+    } = req.body;
+
+    // 🔐 Verify Razorpay signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: "Payment verification failed" });
+    }
+
+    // 🎯 Book slot
+    const slot = await Slot.findById(slotId);
+
+    if (!slot) {
+      return res.status(404).json({ message: "Slot not found" });
+    }
+
+    slot.status = "booked";
+    slot.bookedBy = req.userId;
+    await slot.save();
+
+    // 👤 Get user
+    const user = await User.findById(req.userId);
+
+    // 📧 SEND CONFIRMATION EMAIL
+    if (user) {
+      await transporter.sendMail({
+        from: process.env.EMAIL,
+        to: user.email,
+        subject: "✅ Turf Booking Confirmed",
+        text: `
+Hi ${user.name || "User"},
+
+Your turf booking has been successfully confirmed 🎉
+
+📅 Date: ${slot.date}
+⏰ Time: ${slot.time}
+
+We look forward to seeing you on the field!
+
+– Turf Booking Team
+        `
+      });
+    }
+
+    res.json({
+      message: "Payment successful, booking confirmed & email sent"
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
