@@ -1,8 +1,7 @@
 const User = require("../Models/User.js");
 const generateOtp = require("../Utils/generateOtp.js");
-const transporter = require("../Config/mailer.js");
+const { sendMail } = require("../Config/mailer.js");
 
-// SEND OTP FOR REGISTRATION
 exports.registerSendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -23,8 +22,8 @@ exports.registerSendOtp = async (req, res) => {
       otpExpiry: Date.now() + 5 * 60 * 1000
     });
 
-    await transporter.sendMail({
-      from: process.env.EMAIL,
+    // Remove process.env.EMAIL - Resend handles FROM
+    await sendMail({
       to: email,
       subject: "OTP for Registration",
       text: `Your OTP is ${otp}`
@@ -33,12 +32,12 @@ exports.registerSendOtp = async (req, res) => {
     res.json({ message: "OTP sent for registration" });
 
   } catch (err) {
+    console.log('Register OTP Error:', err);  // Better logging
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
-// SEND OTP
+// SEND OTP (same change)
 exports.sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -52,11 +51,10 @@ exports.sendOtp = async (req, res) => {
     const otp = generateOtp();
 
     user.otp = otp;
-    user.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+    user.otpExpiry = Date.now() + 5 * 60 * 1000;
     await user.save();
 
-    await transporter.sendMail({
-      from: process.env.EMAIL,
+    await sendMail({
       to: email,
       subject: "Your OTP Verification Code",
       text: `Your OTP is ${otp}`
@@ -65,10 +63,77 @@ exports.sendOtp = async (req, res) => {
     res.json({ message: "OTP sent to email" });
 
   } catch (err) {
-    console.log(err);
+    console.log('Send OTP Error:', err);
     res.status(500).json({ message: "Server error" });
   }
 };
+// SEND OTP FOR REGISTRATION
+// exports.registerSendOtp = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+
+//     const existingUser = await User.findOne({ email });
+
+//     if (existingUser) {
+//       return res
+//         .status(400)
+//         .json({ message: "Email already registered" });
+//     }
+
+//     const otp = generateOtp();
+
+//     const user = await User.create({
+//       email,
+//       otp,
+//       otpExpiry: Date.now() + 5 * 60 * 1000
+//     });
+
+//     await transporter.sendMail({
+//       from: process.env.EMAIL,
+//       to: email,
+//       subject: "OTP for Registration",
+//       text: `Your OTP is ${otp}`
+//     });
+
+//     res.json({ message: "OTP sent for registration" });
+
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+// // SEND OTP
+// exports.sendOtp = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+
+//     let user = await User.findOne({ email });
+
+//     if (!user) {
+//       user = await User.create({ email });
+//     }
+
+//     const otp = generateOtp();
+
+//     user.otp = otp;
+//     user.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+//     await user.save();
+
+//     await transporter.sendMail({
+//       from: process.env.EMAIL,
+//       to: email,
+//       subject: "Your OTP Verification Code",
+//       text: `Your OTP is ${otp}`
+//     });
+
+//     res.json({ message: "OTP sent to email" });
+
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 // VERIFY OTP & SET PASSWORD
 exports.verifyOtp = async (req, res) => {
