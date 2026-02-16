@@ -1,6 +1,11 @@
 const Slot = require("../Models/Slot.js");
 const User = require("../Models/User.js");
-const transporter = require("../Config/mailer.js");
+
+// Utility: Generate 6 digit booking number
+const generateBookingNumber = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
 
 // CREATE SLOT (Admin)
 exports.createSlot = async (req, res) => {
@@ -10,15 +15,10 @@ exports.createSlot = async (req, res) => {
     const slotExists = await Slot.findOne({ date, time });
 
     if (slotExists) {
-      return res
-        .status(400)
-        .json({ message: "Slot already exists" });
+      return res.status(400).json({ message: "Slot already exists" });
     }
 
-    const slot = await Slot.create({
-      date,
-      time
-    });
+    const slot = await Slot.create({ date, time });
 
     res.json({ message: "Slot created", slot });
 
@@ -28,16 +28,18 @@ exports.createSlot = async (req, res) => {
 };
 
 
+// GET ALL SLOTS
 exports.getAllSlots = async (req, res) => {
   try {
-    const slots = await Slot.find();
+    const slots = await Slot.find().populate("bookedBy", "name mobile email");
     res.json(slots);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// BOOK SLOT (Atomic)
+
+// BOOK SLOT (User → Pending)
 exports.bookSlot = async (req, res) => {
   try {
     const slot = await Slot.findOneAndUpdate(
@@ -53,13 +55,11 @@ exports.bookSlot = async (req, res) => {
     );
 
     if (!slot) {
-      return res.status(400).json({
-        message: "Slot not available"
-      });
+      return res.status(400).json({ message: "Slot not available" });
     }
 
     res.json({
-      message: "Slot pending. Complete payment & wait for admin confirmation."
+      message: "Slot request created. Please call admin to confirm booking."
     });
 
   } catch (err) {
@@ -67,44 +67,29 @@ exports.bookSlot = async (req, res) => {
   }
 };
 
-// ADMIN CONFIRM BOOKING
+
 // ADMIN CONFIRM BOOKING
 exports.confirmBooking = async (req, res) => {
   try {
-    const slotId = req.params.id;
-
-    const slot = await Slot.findById(slotId);
+    const slot = await Slot.findById(req.params.id);
 
     if (!slot) {
       return res.status(404).json({ message: "Slot not found" });
     }
 
     if (slot.status !== "pending") {
-      return res.status(400).json({
-        message: "Slot is not in pending state"
-      });
+      return res.status(400).json({ message: "Slot is not pending" });
     }
 
     slot.status = "booked";
+    slot.bookingNumber = generateBookingNumber();
+
     await slot.save();
 
-    const user = await User.findById(slot.bookedBy);
-
-    if (user) {
-      await transporter.sendMail({
-        from: process.env.EMAIL,
-        to: user.email,
-        subject: "Turf Booking Confirmed",
-        text: `Your booking is successful!
-
-Date: ${slot.date}
-Time: ${slot.time}
-
-Thank you for choosing our turf.`
-      });
-    }
-
-    res.json({ message: "Slot confirmed & email sent" });
+    res.json({
+      message: "Booking confirmed successfully",
+      bookingNumber: slot.bookingNumber
+    });
 
   } catch (err) {
     res.status(500).json({ message: "Server error" });
@@ -112,7 +97,34 @@ Thank you for choosing our turf.`
 };
 
 
-// USER BOOKING HISTORY
+// ADMIN CANCEL BOOKING
+exports.cancelBooking = async (req, res) => {
+  try {
+    const slot = await Slot.findById(req.params.id);
+
+    if (!slot) {
+      return res.status(404).json({ message: "Slot not found" });
+    }
+
+    if (slot.status === "available") {
+      return res.status(400).json({ message: "Slot already available" });
+    }
+
+    slot.status = "available";
+    slot.bookedBy = null;
+    slot.bookingNumber = null;
+
+    await slot.save();
+
+    res.json({ message: "Booking cancelled & slot is now available" });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// USER BOOKING HISTORY (Only Confirmed)
 exports.myBookings = async (req, res) => {
   try {
     const slots = await Slot.find({
@@ -133,110 +145,11 @@ exports.getAllBookings = async (req, res) => {
   try {
     const bookings = await Slot.find({
       status: { $in: ["pending", "booked"] }
-    }).populate("bookedBy", "name email");
+    }).populate("bookedBy", "name mobile email");
 
     res.json(bookings);
 
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-const razorpay = require("../Config/razorpay.js");
-
-// CREATE PAYMENT ORDER
-exports.createOrder = async (req, res) => {
-  try {
-    const slot = await Slot.findById(req.params.id);
-
-    if (!slot || slot.status !== "available") {
-      return res.status(400).json({ message: "Slot not available" });
-    }
-
-    const order = await razorpay.orders.create({
-      amount: 500,
-      currency: "INR",
-      receipt: `slot_${slot._id}`
-    });
-
-    res.json({
-      orderId: order.id,
-      amount: order.amount
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Payment order failed" });
-  }
-};
-
-
-
-const crypto = require("crypto");
-
-exports.verifyPayment = async (req, res) => {
-  try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      slotId
-    } = req.body;
-
-    // 🔐 Verify Razorpay signature
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ message: "Payment verification failed" });
-    }
-
-    // 🎯 Book slot
-    const slot = await Slot.findById(slotId);
-
-    if (!slot) {
-      return res.status(404).json({ message: "Slot not found" });
-    }
-
-    slot.status = "booked";
-    slot.bookedBy = req.userId;
-    await slot.save();
-
-    // 👤 Get user
-    const user = await User.findById(req.userId);
-
-    // 📧 SEND CONFIRMATION EMAIL
-    if (user) {
-      await transporter.sendMail({
-        from: process.env.EMAIL,
-        to: user.email,
-        subject: "✅ Turf Booking Confirmed",
-        text: `
-Hi ${user.name || "User"},
-
-Your turf booking has been successfully confirmed 🎉
-
-📅 Date: ${slot.date}
-⏰ Time: ${slot.time}
-
-We look forward to seeing you on the field!
-
-– Turf Booking Team
-        `
-      });
-    }
-
-    res.json({
-      message: "Payment successful, booking confirmed & email sent"
-    });
-
-  } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };

@@ -1,179 +1,44 @@
 const User = require("../Models/User.js");
-const generateOtp = require("../Utils/generateOtp.js");
-const { sendMail } = require("../Config/mailer.js");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
-exports.registerSendOtp = async (req, res) => {
+
+// REGISTER
+exports.register = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { name, email, mobile, password } = req.body;
+
+    if (!name || !email || !mobile || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
 
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "Email already registered" });
+      return res.status(400).json({ message: "Email already registered" });
     }
 
-    const otp = generateOtp();
-
-    const user = await User.create({
-      email,
-      otp,
-      otpExpiry: Date.now() + 5 * 60 * 1000
-    });
-
-    // Remove process.env.EMAIL - Resend handles FROM
-    await sendMail({
-      to: email,
-      subject: "OTP for Registration",
-      text: `Your OTP is ${otp}`
-    });
-
-    res.json({ message: "OTP sent for registration" });
-
-  } catch (err) {
-    console.log('Register OTP Error:', err);  // Better logging
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// SEND OTP (same change)
-exports.sendOtp = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      user = await User.create({ email });
-    }
-
-    const otp = generateOtp();
-
-    user.otp = otp;
-    user.otpExpiry = Date.now() + 5 * 60 * 1000;
-    await user.save();
-
-    await sendMail({
-      to: email,
-      subject: "Your OTP Verification Code",
-      text: `Your OTP is ${otp}`
-    });
-
-    res.json({ message: "OTP sent to email" });
-
-  } catch (err) {
-    console.log('Send OTP Error:', err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-// SEND OTP FOR REGISTRATION
-// exports.registerSendOtp = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-
-//     const existingUser = await User.findOne({ email });
-
-//     if (existingUser) {
-//       return res
-//         .status(400)
-//         .json({ message: "Email already registered" });
-//     }
-
-//     const otp = generateOtp();
-
-//     const user = await User.create({
-//       email,
-//       otp,
-//       otpExpiry: Date.now() + 5 * 60 * 1000
-//     });
-
-//     await transporter.sendMail({
-//       from: process.env.EMAIL,
-//       to: email,
-//       subject: "OTP for Registration",
-//       text: `Your OTP is ${otp}`
-//     });
-
-//     res.json({ message: "OTP sent for registration" });
-
-//   } catch (err) {
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
-
-// // SEND OTP
-// exports.sendOtp = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-
-//     let user = await User.findOne({ email });
-
-//     if (!user) {
-//       user = await User.create({ email });
-//     }
-
-//     const otp = generateOtp();
-
-//     user.otp = otp;
-//     user.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-//     await user.save();
-
-//     await transporter.sendMail({
-//       from: process.env.EMAIL,
-//       to: email,
-//       subject: "Your OTP Verification Code",
-//       text: `Your OTP is ${otp}`
-//     });
-
-//     res.json({ message: "OTP sent to email" });
-
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
-// VERIFY OTP & SET PASSWORD
-exports.verifyOtp = async (req, res) => {
-  try {
-    const { email, otp, password, name } = req.body;
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
-
-    if (user.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
-
-    if (user.otpExpiry < Date.now()) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    const bcrypt = require("bcryptjs");
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    user.password = hashedPassword;
-    user.name = name;
-    user.isVerified = true;
-    user.otp = null;
-    user.otpExpiry = null;
+    const user = await User.create({
+      name,
+      email,
+      mobile,
+      password: hashedPassword
+    });
 
-    await user.save();
-
-    res.json({ message: "Account verified & registered successfully" });
+    res.status(201).json({
+      message: "User registered successfully"
+    });
 
   } catch (err) {
+    console.log("Register Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 
-const jwt = require("jsonwebtoken");
+
 // LOGIN
 exports.login = async (req, res) => {
   try {
@@ -181,29 +46,70 @@ exports.login = async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user)
+    if (!user) {
       return res.status(400).json({ message: "User not found" });
+    }
 
-    if (!user.isVerified)
-      return res.status(400).json({ message: "Email not verified" });
-
-    const bcrypt = require("bcryptjs");
     const match = await bcrypt.compare(password, user.password);
 
-    if (!match)
-      return res.status(400).json({ message: "Wrong password" });
+    if (!match) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    res.json({ message: "Login successful", userId: user._id,token: token
-     });
+    res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        role: user.role
+      }
+    });
 
   } catch (err) {
+    console.log("Login Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+
+// CREATE DEFAULT ADMIN (Run Once)
+exports.createAdmin = async (req, res) => {
+  try {
+    const existingAdmin = await User.findOne({ role: "admin" });
+
+    if (existingAdmin) {
+      return res.status(400).json({ message: "Admin already exists" });
+    }
+
+    const bcrypt = require("bcryptjs");
+
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+
+    const admin = await User.create({
+      name: "Admin",
+      email: "admin@turf.com",
+      mobile: "9999999999",
+      password: hashedPassword,
+      role: "admin"
+    });
+
+    res.json({
+      message: "Admin created successfully",
+      email: "admin@turf.com",
+      password: "admin123"
+    });
+
+  } catch (err) {
+    console.error("Create Admin Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

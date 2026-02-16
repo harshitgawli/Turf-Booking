@@ -1,31 +1,47 @@
 const express = require("express");
 const router = express.Router();
-const adminMiddleware = require("../Middleware/adminMiddleware.js");
+
 const authMiddleware = require("../Middleware/authMiddleware.js");
+const adminMiddleware = require("../Middleware/adminMiddleware.js");
 
 const {
   createSlot,
   getAllSlots,
+  bookSlot,
+  confirmBooking,
+  cancelBooking,
   myBookings,
-  getAllBookings,
-  createOrder,
-  verifyPayment
+  getAllBookings
 } = require("../Controllers/slotControllers.js");
 
 
+// -------------------- ADMIN ROUTES --------------------
 
-router.post("/create",
+// Create slot
+router.post(
+  "/create",
   authMiddleware,
   adminMiddleware,
   createSlot
 );
-// Get slots (public)
-router.get("/", getAllSlots);
 
+// Confirm booking
+router.post(
+  "/confirm/:id",
+  authMiddleware,
+  adminMiddleware,
+  confirmBooking
+);
 
+// Cancel booking
+router.post(
+  "/cancel/:id",
+  authMiddleware,
+  adminMiddleware,
+  cancelBooking
+);
 
-router.get("/my-bookings", authMiddleware, myBookings);
-
+// View all bookings
 router.get(
   "/all-bookings",
   authMiddleware,
@@ -33,10 +49,33 @@ router.get(
   getAllBookings
 );
 
+//view pending bookings
+router.get(
+  "/pending",
+  authMiddleware,
+  adminMiddleware,
+  getPendingBookings
+);
 
-router.post("/create-order/:id", authMiddleware, createOrder);
-router.post("/verify-payment", authMiddleware, verifyPayment);
 
+// -------------------- USER ROUTES --------------------
+
+// Get all slots (public)
+router.get("/", getAllSlots);
+
+// Book slot (pending state)
+router.post(
+  "/book/:id",
+  authMiddleware,
+  bookSlot
+);
+
+// My confirmed bookings
+router.get(
+  "/my-bookings",
+  authMiddleware,
+  myBookings
+);
 
 
 module.exports = router;

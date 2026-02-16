@@ -1,27 +1,35 @@
 const mongoose = require("mongoose");
 
-const slotSchema = new mongoose.Schema({
-  date: {
-    type: String,
-    required: true
+const slotSchema = new mongoose.Schema(
+  {
+    date: {
+      type: String,
+      required: true
+    },
+
+    time: {
+      type: String,
+      required: true
+    },
+
+    status: {
+      type: String,
+      enum: ["available", "pending", "booked", "cancelled"],
+      default: "available"
+    },
+
+    bookedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null
+    },
+
+    bookingNumber: {
+      type: String,
+      default: null
+    }
   },
-
-  time: {
-    type: String,
-    required: true
-  },
-
-  status: {
-  type: String,
-  enum: ["available", "booked"],
-  default: "available"
-},
-
-  bookedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    default: null
-  }
-});
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("Slot", slotSchema);
