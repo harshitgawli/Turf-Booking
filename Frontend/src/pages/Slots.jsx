@@ -9,8 +9,9 @@ function Slots() {
   const [activeTab, setActiveTab] = useState("slots");
 
   const navigate = useNavigate();
+
   const user = JSON.parse(localStorage.getItem("user"));
-  const userId = user?.id; // important
+  const userId = user?._id || user?.id;
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -19,17 +20,22 @@ function Slots() {
   const tomorrow = tomorrowDate.toISOString().split("T")[0];
 
   useEffect(() => {
+  fetchData();
+
+  const interval = setInterval(() => {
     fetchData();
-  }, []);
+  }, 10000); // refresh every 10 sec
+
+  return () => clearInterval(interval);
+}, []);
+
 
   const fetchData = async () => {
     try {
       const res = await api.get("/slots");
-
       const filtered = res.data.filter(
         (slot) => slot.date === today || slot.date === tomorrow
       );
-
       setSlots(filtered);
 
       const myRes = await api.get("/slots/my-bookings");
@@ -46,11 +52,8 @@ function Slots() {
     try {
       const res = await api.post(`/slots/book/${slot._id}`);
 
-      alert(
-        `Request Created!\nRequest Code: ${res.data.requestCode}\nCall admin to confirm.`
-      );
-
-      fetchData();
+      // Redirect to booking pending page
+      navigate(`/booking-pending/${slot._id}`);
 
     } catch (err) {
       alert(err.response?.data?.message || "Booking failed");
@@ -63,94 +66,56 @@ function Slots() {
     navigate("/login");
   };
 
-  // const renderStatus = (slot) => {
-    
-  //   const isMySlot =
-  //     String(slot.bookedBy?._id) === String(userId);
-
-  //   // AVAILABLE
-  //   if (slot.status === "available") {
-  //     return (
-  //       <span className="text-green-600 font-bold">
-  //         Available
-  //       </span>
-  //     );
-  //   }
-
-  //   // PENDING
-  //   if (slot.status === "pending") {
-  //     return (
-  //       <div className="text-yellow-600 font-bold">
-  //         Pending
-  //         {isMySlot && (
-  //           <div className="bg-yellow-100 text-black p-2 mt-2 rounded text-sm">
-  //             Request Code: {slot.requestCode}
-  //             <div className="text-xs mt-1">
-  //               Call Admin to confirm booking
-  //             </div>
-  //           </div>
-  //         )}
-  //       </div>
-  //     );
-  //   }
-
-  //   // BOOKED
-  //   if (slot.status === "booked") {
-  //     return (
-  //       <div className="text-red-600 font-bold">
-  //         Booked
-  //         {isMySlot && slot.bookingNumber && (
-  //           <div className="bg-gray-100 text-black p-2 mt-2 rounded text-sm">
-  //             Booking No: {slot.bookingNumber}
-  //           </div>
-  //         )}
-  //       </div>
-  //     );
-  //   }
-
-  //   return null;
-  // };
-
   const renderStatus = (slot) => {
+    const bookedById =
+      typeof slot.bookedBy === "object"
+        ? slot.bookedBy?._id
+        : slot.bookedBy;
 
-  const isMySlot =
-    String(slot.bookedBy?._id || slot.bookedBy) === String(userId);
+    const isMySlot = String(bookedById) === String(userId);
 
-  if (slot.status === "available") {
-    return <span className="text-green-600 font-bold">Available</span>;
-  }
+    // AVAILABLE
+    if (slot.status === "available") {
+      return (
+        <span className="text-green-600 font-bold">
+          Available
+        </span>
+      );
+    }
 
-  if (slot.status === "pending") {
-    return (
-      <div className="text-yellow-600 font-bold">
-        Pending
-        {isMySlot && slot.requestCode && (
-          <div className="bg-yellow-100 text-black p-2 mt-2 rounded text-sm">
-            Request Code: {slot.requestCode}
-            <div className="text-xs mt-1">
-              Call Admin to confirm booking
+    // PENDING
+    if (slot.status === "pending") {
+      return (
+        <div className="text-yellow-600 font-bold">
+          Pending
+          {isMySlot && slot.requestCode && (
+            <div className="bg-yellow-100 text-black p-2 mt-2 rounded text-sm">
+              Request Code: <strong>{slot.requestCode}</strong>
+              <div className="text-xs mt-1">
+                Call Admin to confirm booking
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+          )}
+        </div>
+      );
+    }
 
-  if (slot.status === "booked") {
-    return (
-      <div className="text-red-600 font-bold">
-        Booked
-        {isMySlot && slot.bookingNumber && (
-          <div className="bg-gray-100 text-black p-2 mt-2 rounded text-sm">
-            Booking No: {slot.bookingNumber}
-          </div>
-        )}
-      </div>
-    );
-  }
+    // BOOKED
+    if (slot.status === "booked") {
+      return (
+        <div className="text-red-600 font-bold">
+          Booked
+          {isMySlot && slot.bookingNumber && (
+            <div className="bg-gray-100 text-black p-2 mt-2 rounded text-sm">
+              Booking No: <strong>{slot.bookingNumber}</strong>
+            </div>
+          )}
+        </div>
+      );
+    }
 
-  return null;
-};
+    return null;
+  };
 
   const todaySlots = slots.filter((s) => s.date === today);
   const tomorrowSlots = slots.filter((s) => s.date === tomorrow);
@@ -175,7 +140,9 @@ function Slots() {
           </button>
 
           <button
-            onClick={() => setActiveTab("my")}
+            onClick={() => {setActiveTab("my");
+              fetchData();
+            }}
             className={`px-4 py-2 rounded-lg ${
               activeTab === "my"
                 ? "bg-green-600 text-white"

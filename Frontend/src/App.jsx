@@ -16,7 +16,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/slots" element={<Slots />} />
         <Route path="/admin" element={<Admin />} />
-        <Route path="/booking-pending" element={<BookingPending />} />
+        <Route path="/booking-pending/:id" element={<BookingPending />} />
+
 
 
       </Routes>
