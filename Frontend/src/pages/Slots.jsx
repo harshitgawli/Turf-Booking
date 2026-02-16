@@ -8,34 +8,33 @@ function Slots() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("slots");
 
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?._id || user?.id;
 
-  const today = new Date().toISOString().split("T")[0];
-
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrow = tomorrowDate.toISOString().split("T")[0];
-
   useEffect(() => {
-  fetchData();
-
-  const interval = setInterval(() => {
     fetchData();
-  }, 10000); // refresh every 10 sec
 
-  return () => clearInterval(interval);
-}, []);
+    const interval = setInterval(() => {
+      fetchData();
+    }, 10000);
 
+    return () => clearInterval(interval);
+  }, [selectedDate]);
 
   const fetchData = async () => {
     try {
       const res = await api.get("/slots");
+
       const filtered = res.data.filter(
-        (slot) => slot.date === today || slot.date === tomorrow
+        (slot) => slot.date === selectedDate
       );
+
       setSlots(filtered);
 
       const myRes = await api.get("/slots/my-bookings");
@@ -50,11 +49,8 @@ function Slots() {
 
   const handleBook = async (slot) => {
     try {
-      const res = await api.post(`/slots/book/${slot._id}`);
-
-      // Redirect to booking pending page
+      await api.post(`/slots/book/${slot._id}`);
       navigate(`/booking-pending/${slot._id}`);
-
     } catch (err) {
       alert(err.response?.data?.message || "Booking failed");
     }
@@ -74,16 +70,10 @@ function Slots() {
 
     const isMySlot = String(bookedById) === String(userId);
 
-    // AVAILABLE
     if (slot.status === "available") {
-      return (
-        <span className="text-green-600 font-bold">
-          Available
-        </span>
-      );
+      return <span className="text-green-600 font-bold">Available</span>;
     }
 
-    // PENDING
     if (slot.status === "pending") {
       return (
         <div className="text-yellow-600 font-bold">
@@ -100,7 +90,6 @@ function Slots() {
       );
     }
 
-    // BOOKED
     if (slot.status === "booked") {
       return (
         <div className="text-red-600 font-bold">
@@ -116,9 +105,6 @@ function Slots() {
 
     return null;
   };
-
-  const todaySlots = slots.filter((s) => s.date === today);
-  const tomorrowSlots = slots.filter((s) => s.date === tomorrow);
 
   return (
     <div className="min-h-screen bg-green-100 p-6">
@@ -140,9 +126,7 @@ function Slots() {
           </button>
 
           <button
-            onClick={() => {setActiveTab("my");
-              fetchData();
-            }}
+            onClick={() => setActiveTab("my")}
             className={`px-4 py-2 rounded-lg ${
               activeTab === "my"
                 ? "bg-green-600 text-white"
@@ -165,45 +149,31 @@ function Slots() {
         <p>Loading...</p>
       ) : activeTab === "slots" ? (
         <>
-          {/* TODAY */}
-          <div className="mb-10">
-            <h2 className="text-xl font-bold mb-4">
-              Today ({today})
-            </h2>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {todaySlots.map((slot) => (
-                <div key={slot._id} className="bg-white p-6 rounded-xl shadow">
-                  <p className="mb-2 font-semibold">
-                    Time: {slot.time}
-                  </p>
-
-                  {renderStatus(slot)}
-
-                  {slot.status === "available" && (
-                    <button
-                      onClick={() => handleBook(slot)}
-                      className="w-full bg-green-500 text-white py-2 rounded-lg mt-4"
-                    >
-                      Book Slot
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+          {/* Date Selector */}
+          <div className="mb-6">
+            <label className="block mb-2 font-semibold">
+              Select Date:
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="border p-2 rounded"
+            />
           </div>
 
-          {/* TOMORROW */}
-          <div>
-            <h2 className="text-xl font-bold mb-4">
-              Tomorrow ({tomorrow})
-            </h2>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {tomorrowSlots.map((slot) => (
+          <div className="grid md:grid-cols-3 gap-6">
+            {slots.length === 0 ? (
+              <p>No slots available for this date.</p>
+            ) : (
+              slots.map((slot) => (
                 <div key={slot._id} className="bg-white p-6 rounded-xl shadow">
                   <p className="mb-2 font-semibold">
                     Time: {slot.time}
+                  </p>
+
+                  <p className="mb-2 font-semibold text-blue-600">
+                    ₹{slot.price}/hr
                   </p>
 
                   {renderStatus(slot)}
@@ -217,8 +187,8 @@ function Slots() {
                     </button>
                   )}
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
         </>
       ) : (

@@ -75,14 +75,14 @@ function BookingPending() {
         <div className="mb-6">
           <p className="font-semibold mb-2">Admin Contact:</p>
           <p className="text-xl font-bold text-green-600">
-            +91 9876543210
+             7974187766 OR 70676525056
           </p>
         </div>
 
         <div className="mb-6">
           <p className="font-semibold mb-2">Scan & Pay</p>
           <img
-            src="/qr.png"
+            src="/paymentQR.jpeg"
             alt="QR"
             className="w-48 mx-auto border rounded"
           />
