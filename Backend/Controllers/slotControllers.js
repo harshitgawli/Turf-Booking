@@ -153,3 +153,17 @@ exports.getAllBookings = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// ADMIN VIEW ONLY PENDING BOOKINGS
+exports.getPendingBookings = async (req, res) => {
+  try {
+    const pending = await Slot.find({
+      status: "pending"
+    }).populate("bookedBy", "name mobile email");
+
+    res.json(pending);
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};

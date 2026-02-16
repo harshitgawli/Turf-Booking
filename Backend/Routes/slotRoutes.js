@@ -11,7 +11,8 @@ const {
   confirmBooking,
   cancelBooking,
   myBookings,
-  getAllBookings
+  getAllBookings,
+  getPendingBookings
 } = require("../Controllers/slotControllers.js");
 
 
