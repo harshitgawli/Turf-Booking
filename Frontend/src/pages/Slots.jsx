@@ -7,7 +7,10 @@ function Slots() {
   const [myBookings, setMyBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("slots");
+
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id; // important
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -33,25 +36,26 @@ function Slots() {
       setMyBookings(myRes.data);
 
     } catch (err) {
-      console.error("Error loading data");
+      console.error("Error loading data", err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleBook = async (slot) => {
-  try {
-    await api.post(`/slots/book/${slot._id}`);
+    try {
+      const res = await api.post(`/slots/book/${slot._id}`);
 
-    navigate("/booking-pending", {
-      state: { slot }
-    });
+      alert(
+        `Request Created!\nRequest Code: ${res.data.requestCode}\nCall admin to confirm.`
+      );
 
-  } catch (err) {
-    alert(err.response?.data?.message || "Booking failed");
-  }
-};
+      fetchData();
 
+    } catch (err) {
+      alert(err.response?.data?.message || "Booking failed");
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -59,24 +63,94 @@ function Slots() {
     navigate("/login");
   };
 
+  // const renderStatus = (slot) => {
+    
+  //   const isMySlot =
+  //     String(slot.bookedBy?._id) === String(userId);
+
+  //   // AVAILABLE
+  //   if (slot.status === "available") {
+  //     return (
+  //       <span className="text-green-600 font-bold">
+  //         Available
+  //       </span>
+  //     );
+  //   }
+
+  //   // PENDING
+  //   if (slot.status === "pending") {
+  //     return (
+  //       <div className="text-yellow-600 font-bold">
+  //         Pending
+  //         {isMySlot && (
+  //           <div className="bg-yellow-100 text-black p-2 mt-2 rounded text-sm">
+  //             Request Code: {slot.requestCode}
+  //             <div className="text-xs mt-1">
+  //               Call Admin to confirm booking
+  //             </div>
+  //           </div>
+  //         )}
+  //       </div>
+  //     );
+  //   }
+
+  //   // BOOKED
+  //   if (slot.status === "booked") {
+  //     return (
+  //       <div className="text-red-600 font-bold">
+  //         Booked
+  //         {isMySlot && slot.bookingNumber && (
+  //           <div className="bg-gray-100 text-black p-2 mt-2 rounded text-sm">
+  //             Booking No: {slot.bookingNumber}
+  //           </div>
+  //         )}
+  //       </div>
+  //     );
+  //   }
+
+  //   return null;
+  // };
+
   const renderStatus = (slot) => {
-    if (slot.status === "available")
-      return <span className="text-green-600 font-bold">Available</span>;
 
-    if (slot.status === "pending")
-      return <span className="text-yellow-600 font-bold">Pending</span>;
+  const isMySlot =
+    String(slot.bookedBy?._id || slot.bookedBy) === String(userId);
 
+  if (slot.status === "available") {
+    return <span className="text-green-600 font-bold">Available</span>;
+  }
+
+  if (slot.status === "pending") {
     return (
-      <span className="text-red-600 font-bold">
+      <div className="text-yellow-600 font-bold">
+        Pending
+        {isMySlot && slot.requestCode && (
+          <div className="bg-yellow-100 text-black p-2 mt-2 rounded text-sm">
+            Request Code: {slot.requestCode}
+            <div className="text-xs mt-1">
+              Call Admin to confirm booking
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (slot.status === "booked") {
+    return (
+      <div className="text-red-600 font-bold">
         Booked
-        {slot.bookingNumber && (
-          <div className="text-sm text-black mt-1">
+        {isMySlot && slot.bookingNumber && (
+          <div className="bg-gray-100 text-black p-2 mt-2 rounded text-sm">
             Booking No: {slot.bookingNumber}
           </div>
         )}
-      </span>
+      </div>
     );
-  };
+  }
+
+  return null;
+};
 
   const todaySlots = slots.filter((s) => s.date === today);
   const tomorrowSlots = slots.filter((s) => s.date === tomorrow);
@@ -87,6 +161,7 @@ function Slots() {
       {/* Top Bar */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold">Sportify Turf</h1>
+
         <div className="flex gap-3">
           <button
             onClick={() => setActiveTab("slots")}
@@ -132,7 +207,10 @@ function Slots() {
             <div className="grid md:grid-cols-3 gap-6">
               {todaySlots.map((slot) => (
                 <div key={slot._id} className="bg-white p-6 rounded-xl shadow">
-                  <p className="mb-2 font-semibold">Time: {slot.time}</p>
+                  <p className="mb-2 font-semibold">
+                    Time: {slot.time}
+                  </p>
+
                   {renderStatus(slot)}
 
                   {slot.status === "available" && (
@@ -157,12 +235,15 @@ function Slots() {
             <div className="grid md:grid-cols-3 gap-6">
               {tomorrowSlots.map((slot) => (
                 <div key={slot._id} className="bg-white p-6 rounded-xl shadow">
-                  <p className="mb-2 font-semibold">Time: {slot.time}</p>
+                  <p className="mb-2 font-semibold">
+                    Time: {slot.time}
+                  </p>
+
                   {renderStatus(slot)}
 
                   {slot.status === "available" && (
                     <button
-                      onClick={() => handleBook(slot._id)}
+                      onClick={() => handleBook(slot)}
                       className="w-full bg-green-500 text-white py-2 rounded-lg mt-4"
                     >
                       Book Slot
@@ -175,7 +256,9 @@ function Slots() {
         </>
       ) : (
         <div>
-          <h2 className="text-xl font-bold mb-6">My Confirmed Bookings</h2>
+          <h2 className="text-xl font-bold mb-6">
+            My Confirmed Bookings
+          </h2>
 
           {myBookings.length === 0 ? (
             <p>No confirmed bookings yet.</p>
@@ -183,14 +266,16 @@ function Slots() {
             <div className="grid md:grid-cols-3 gap-6">
               {myBookings.map((slot) => (
                 <div key={slot._id} className="bg-white p-6 rounded-xl shadow">
-                  <p className="font-semibold mb-2">Date: {slot.date}</p>
-                  <p className="mb-2">Time: {slot.time}</p>
+                  <p className="font-semibold mb-2">
+                    Date: {slot.date}
+                  </p>
+                  <p className="mb-2">
+                    Time: {slot.time}
+                  </p>
 
-                  {slot.bookingNumber && (
-                    <div className="bg-gray-100 p-2 rounded text-sm font-bold">
-                      Booking No: {slot.bookingNumber}
-                    </div>
-                  )}
+                  <div className="bg-gray-100 p-2 rounded text-sm font-bold">
+                    Booking No: {slot.bookingNumber}
+                  </div>
                 </div>
               ))}
             </div>
