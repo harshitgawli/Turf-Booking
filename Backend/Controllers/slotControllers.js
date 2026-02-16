@@ -65,7 +65,8 @@ exports.bookSlot = async (req, res) => {
     }
 
     res.json({
-      message: "Slot request created. Please call admin to confirm booking."
+      mmessage: "Slot request created. Please call admin to confirm booking.",
+      requestCode: requestCode
     });
 
   } catch (err) {
