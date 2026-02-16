@@ -47,6 +47,9 @@ exports.getAllSlots = async (req, res) => {
 // BOOK SLOT (User → Pending)
 exports.bookSlot = async (req, res) => {
   try {
+
+    const requestCode = generateCode();
+
     const slot = await Slot.findOneAndUpdate(
       {
         _id: req.params.id,
@@ -55,7 +58,7 @@ exports.bookSlot = async (req, res) => {
       {
         status: "pending",
         bookedBy: req.userId,
-        requestCode: generateCode()
+        requestCode: requestCode
       },
       { new: true }
     );
@@ -65,7 +68,7 @@ exports.bookSlot = async (req, res) => {
     }
 
     res.json({
-      mmessage: "Slot request created. Please call admin to confirm booking.",
+      message: "Slot request created. Please call admin to confirm booking.",
       requestCode: requestCode
     });
 
