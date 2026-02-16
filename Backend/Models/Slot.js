@@ -27,7 +27,12 @@ const slotSchema = new mongoose.Schema(
     bookingNumber: {
       type: String,
       default: null
+    },
+    requestCode: {
+      type: String,
+      default: null
     }
+
   },
   { timestamps: true }
 );

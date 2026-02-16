@@ -6,6 +6,11 @@ const generateBookingNumber = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+const generateCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+
 
 // CREATE SLOT (Admin)
 exports.createSlot = async (req, res) => {
@@ -49,7 +54,8 @@ exports.bookSlot = async (req, res) => {
       },
       {
         status: "pending",
-        bookedBy: req.userId
+        bookedBy: req.userId,
+        requestCode: generateCode()
       },
       { new: true }
     );
