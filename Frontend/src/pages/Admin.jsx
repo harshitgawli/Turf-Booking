@@ -4,6 +4,7 @@ import api from "../services/api";
 
 function Admin() {
   const [bookings, setBookings] = useState([]);
+  const [allSlots, setAllSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState("");
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
@@ -37,38 +38,60 @@ function Admin() {
     return () => clearInterval(interval);
   }, []);
 
+  // const loadBookings = async () => {
+  //   try {
+  //     const res = await api.get("/slots/all-bookings", {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`
+  //       }
+  //     });
+
+  //     // Sort bookings by date and time
+  //     const sortedBookings = res.data.sort((a, b) => {
+  //       const dateA = new Date(a.date);
+  //       const dateB = new Date(b.date);
+  //       if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+        
+  //       const timeToMinutes = (timeStr) => {
+  //         if (!timeStr) return 0;
+  //         const [hours, minutes] = timeStr.split(':').map(Number);
+  //         return hours * 60 + minutes;
+  //       };
+        
+  //       return timeToMinutes(a.time) - timeToMinutes(b.time);
+  //     });
+
+  //     setBookings(sortedBookings);
+
+  //   } catch (err) {
+  //     console.error("Admin load error:", err.response?.data || err.message);
+  //     showToast("Failed to load bookings", "error");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const loadBookings = async () => {
-    try {
-      const res = await api.get("/slots/all-bookings", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+  try {
+    // 1️⃣ Load pending + booked
+    const bookingRes = await api.get("/slots/all-bookings", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
 
-      // Sort bookings by date and time
-      const sortedBookings = res.data.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
-        
-        const timeToMinutes = (timeStr) => {
-          if (!timeStr) return 0;
-          const [hours, minutes] = timeStr.split(':').map(Number);
-          return hours * 60 + minutes;
-        };
-        
-        return timeToMinutes(a.time) - timeToMinutes(b.time);
-      });
+    setBookings(bookingRes.data);
 
-      setBookings(sortedBookings);
+    // 2️⃣ Load ALL slots (including available)
+    const slotRes = await api.get("/slots");
+    setAllSlots(slotRes.data);
 
-    } catch (err) {
-      console.error("Admin load error:", err.response?.data || err.message);
-      showToast("Failed to load bookings", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err) {
+    console.error("Admin load error:", err.response?.data || err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const confirmBooking = async (id) => {
     try {
@@ -334,7 +357,7 @@ function Admin() {
     >
       <option value="">Select Available Slot</option>
 
-      {bookings
+      {allSlots
         .filter(slot => slot.status === "available")
         .map(slot => (
           <option key={slot._id} value={slot._id}>
