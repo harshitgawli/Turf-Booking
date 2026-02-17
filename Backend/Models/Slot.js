@@ -42,11 +42,12 @@ const slotSchema = new mongoose.Schema(
       name: String,
       mobile: String
     },
-    paymentType: {
+    paymentMode: {
       type: String,
       enum: ["online", "cash"],
-      default: null
+      default: "online"
     },
+
 
 
 

@@ -219,7 +219,7 @@ exports.getPendingBookings = async (req, res) => {
 // ADMIN OFFLINE BOOKING
 exports.offlineBooking = async (req, res) => {
   try {
-    const { slotId, name, mobile } = req.body;
+    const { slotId, name, email, mobile } = req.body;
 
     const slot = await Slot.findById(slotId);
 
@@ -228,23 +228,19 @@ exports.offlineBooking = async (req, res) => {
     }
 
     slot.status = "booked";
+    slot.customerName = name;
+    slot.customerEmail = email;
+    slot.customerMobile = mobile;
+    slot.paymentMode = "cash";
     slot.bookingNumber = generateBookingNumber();
-    slot.paymentType = "cash";
-
-    slot.offlineCustomer = {
-      name,
-      mobile
-    };
 
     await slot.save();
 
-    res.json({
-      message: "Offline booking successful",
-      bookingNumber: slot.bookingNumber
-    });
+    res.json({ message: "Offline booking created successfully" });
 
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
