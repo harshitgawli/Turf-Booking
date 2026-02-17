@@ -34,9 +34,20 @@ const slotSchema = new mongoose.Schema(
     }
     ,
     price: {
-  type: Number,
-  required: true
-},
+      type: Number,
+      required: true
+    },
+
+    offlineCustomer: {
+      name: String,
+      mobile: String
+    },
+    paymentType: {
+      type: String,
+      enum: ["online", "cash"],
+      default: null
+    },
+
 
 
   },

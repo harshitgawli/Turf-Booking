@@ -127,6 +127,7 @@ exports.confirmBooking = async (req, res) => {
 
     slot.status = "booked";
     slot.bookingNumber = generateBookingNumber();
+    slot.paymentType = "online";
 
     await slot.save();
 
@@ -157,6 +158,9 @@ exports.cancelBooking = async (req, res) => {
     slot.status = "available";
     slot.bookedBy = null;
     slot.bookingNumber = null;
+    slot.paymentType = null;
+    slot.offlineCustomer = null;
+
 
     await slot.save();
 
@@ -211,3 +215,36 @@ exports.getPendingBookings = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// ADMIN OFFLINE BOOKING
+exports.offlineBooking = async (req, res) => {
+  try {
+    const { slotId, name, mobile } = req.body;
+
+    const slot = await Slot.findById(slotId);
+
+    if (!slot || slot.status !== "available") {
+      return res.status(400).json({ message: "Slot not available" });
+    }
+
+    slot.status = "booked";
+    slot.bookingNumber = generateBookingNumber();
+    slot.paymentType = "cash";
+
+    slot.offlineCustomer = {
+      name,
+      mobile
+    };
+
+    await slot.save();
+
+    res.json({
+      message: "Offline booking successful",
+      bookingNumber: slot.bookingNumber
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+

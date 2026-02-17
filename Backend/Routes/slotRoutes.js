@@ -12,7 +12,8 @@ const {
   cancelBooking,
   myBookings,
   getAllBookings,
-  getPendingBookings
+  getPendingBookings,
+  offlineBooking
 } = require("../Controllers/slotControllers.js");
 
 
@@ -56,6 +57,13 @@ router.get(
   authMiddleware,
   adminMiddleware,
   getPendingBookings
+);
+
+router.post(
+  "/offline-book",
+  authMiddleware,
+  adminMiddleware,
+  offlineBooking
 );
 
 

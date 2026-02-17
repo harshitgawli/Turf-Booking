@@ -249,10 +249,10 @@ function Hero() {
                   </div>
                   <h4 className="font-bold text-gray-800 text-xl sm:text-2xl mb-3">Secondary Contact</h4>
                   <a 
-                    href="tel:7067652505" 
+                    href="tel:7067652056" 
                     className="inline-block bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-xl sm:text-2xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-3"
                   >
-                    7067652505
+                    7067652056
                   </a>
                   <p className="text-gray-600 text-sm">Mon-Sun: 6AM - 12AM</p>
                 </div>
@@ -268,9 +268,15 @@ function Hero() {
                     </svg>
                   </div>
                   <h4 className="font-bold text-gray-800 text-xl sm:text-2xl mb-3">Visit Us</h4>
-                  <p className="text-gray-700 leading-relaxed text-base sm:text-lg font-semibold mb-2">
+                  {/* <p className="text-gray-700 leading-relaxed text-base sm:text-lg font-semibold mb-2">
                     Sportify Turf
-                  </p>
+                  </p> */}
+                  <a 
+                    href="https://maps.app.goo.gl/qrTUfiXr7D5E7P1S7" target="_blank" 
+                    className="inline-block bg-gradient-to-br from-purple-400 to-pink-600 text-white px-6 py-4 rounded-xl font-bold text-xl sm:text-2xl hover:from-purple-400 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-3"
+                  >
+                    Sportify Turf
+                  </a>
                   <p className="text-gray-600 text-sm sm:text-base">
                     Near Bus Stand <br />
                     Shajapur, Madhya Pradesh<br />

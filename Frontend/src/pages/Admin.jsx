@@ -7,6 +7,10 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState("");
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
+  const [offlineSlotId, setOfflineSlotId] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerMobile, setCustomerMobile] = useState("");
+
 
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -132,6 +136,41 @@ function Admin() {
       showToast(err.response?.data?.message || "Error creating slots", "error");
     }
   };
+
+  const handleOfflineBooking = async () => {
+  if (!offlineSlotId || !customerName || !customerMobile) {
+    showToast("Fill all fields", "error");
+    return;
+  }
+
+  try {
+    await api.post(
+      "/slots/offline-booking",
+      {
+        slotId: offlineSlotId,
+        name: customerName,
+        mobile: customerMobile
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    showToast("Offline booking successful 🎉");
+
+    setOfflineSlotId("");
+    setCustomerName("");
+    setCustomerMobile("");
+
+    loadBookings();
+
+  } catch (err) {
+    showToast(err.response?.data?.message || "Error booking", "error");
+  }
+};
+
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -279,6 +318,61 @@ function Admin() {
           </div>
         </div>
 
+        {/* Offline Booking Section */}
+<div className="bg-white p-6 rounded-xl shadow mb-10">
+  <h2 className="text-lg font-bold mb-4">
+    Offline Booking (Cash)
+  </h2>
+
+  <div className="grid md:grid-cols-4 gap-4">
+
+    {/* Select Available Slot */}
+    <select
+      value={offlineSlotId}
+      onChange={(e) => setOfflineSlotId(e.target.value)}
+      className="border p-2 rounded"
+    >
+      <option value="">Select Available Slot</option>
+
+      {bookings
+        .filter(slot => slot.status === "available")
+        .map(slot => (
+          <option key={slot._id} value={slot._id}>
+            {slot.date} | {slot.time}
+          </option>
+        ))}
+    </select>
+
+    {/* Customer Name */}
+    <input
+      type="text"
+      placeholder="Customer Name"
+      value={customerName}
+      onChange={(e) => setCustomerName(e.target.value)}
+      className="border p-2 rounded"
+    />
+
+    {/* Customer Mobile */}
+    <input
+      type="text"
+      placeholder="Customer Mobile"
+      value={customerMobile}
+      onChange={(e) => setCustomerMobile(e.target.value)}
+      className="border p-2 rounded"
+    />
+
+    {/* Book Button */}
+    <button
+      onClick={handleOfflineBooking}
+      className="bg-blue-600 text-white px-4 py-2 rounded"
+    >
+      Book (Cash)
+    </button>
+
+  </div>
+</div>
+
+
         {/* Loading State */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 sm:py-20">
@@ -396,6 +490,7 @@ function Section({ title, data, confirm, cancel, isPending }) {
           </div>
         </div>
       </div>
+      
 
       {/* Bookings List */}
       {data.length === 0 ? (
