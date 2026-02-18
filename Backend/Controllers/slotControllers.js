@@ -16,7 +16,7 @@ const generateCode = () => {
 // 
 
 const getPriceByHour = (hour) => {
-  if (hour >= 6 && hour < 10) return 499;
+  if (hour >= 6 && hour < 10) return 449;
   if (hour >= 10 && hour < 17) return 399;
   if (hour >= 17 && hour < 24) return 649;
   return 0;
@@ -219,7 +219,9 @@ exports.getPendingBookings = async (req, res) => {
 // ADMIN OFFLINE BOOKING
 exports.offlineBooking = async (req, res) => {
   try {
-    const { slotId, name, email, mobile } = req.body;
+   
+
+    const { slotId, name, mobile } = req.body;
 
     const slot = await Slot.findById(slotId);
 
@@ -228,19 +230,25 @@ exports.offlineBooking = async (req, res) => {
     }
 
     slot.status = "booked";
-    slot.customerName = name;
-    slot.customerEmail = email;
-    slot.customerMobile = mobile;
     slot.paymentMode = "cash";
+
+    // ✅ Save correctly according to schema
+    slot.offlineCustomer = {
+      name: name,
+      mobile: mobile
+    };
+
+    slot.bookedBy = null; // important for offline
     slot.bookingNumber = generateBookingNumber();
 
     await slot.save();
 
-    res.json({ message: "Offline booking created successfully" });
+    res.json({
+      message: "Offline booking created successfully",
+      bookingNumber: slot.bookingNumber
+    });
 
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-

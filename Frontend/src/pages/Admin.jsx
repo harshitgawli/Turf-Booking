@@ -579,7 +579,7 @@ function Section({ title, data, confirm, cancel, isPending }) {
                   </svg>
                   <div>
                     <p className="text-xs text-gray-500">Customer Name</p>
-                    <p className="text-sm sm:text-base font-semibold text-gray-800">{slot.customerName ||slot.bookedBy?.name || "N/A"}</p>
+                    <p className="text-sm sm:text-base font-semibold text-gray-800">{slot.offlineCustomer?.name ||slot.bookedBy?.name || "N/A"}</p>
                   </div>
                 </div>
 
@@ -589,7 +589,7 @@ function Section({ title, data, confirm, cancel, isPending }) {
                   </svg>
                   <div>
                     <p className="text-xs text-gray-500">Email</p>
-                    <p className="text-sm sm:text-base font-semibold text-gray-800 break-all">{slot.customerEmail ||slot.bookedBy?.email || "N/A"}</p>
+                    <p className="text-sm sm:text-base font-semibold text-gray-800 break-all">{slot.bookedBy?.email || "N/A"}</p>
                   </div>
                 </div>
 
@@ -603,7 +603,7 @@ function Section({ title, data, confirm, cancel, isPending }) {
                       href={`tel:${slot.bookedBy?.mobile}`}
                       className="text-sm sm:text-base font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                     >
-                      {slot.customerMobile ||slot.bookedBy?.mobile || "N/A"}
+                      {slot.offlineCustomer?.mobile ||slot.bookedBy?.mobile || "N/A"}
                     </a>
                   </div>
                 </div>
